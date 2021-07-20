@@ -1,101 +1,114 @@
 buildscript {
     repositories {
-        jcenter()
-        maven { url = "http://files.minecraftforge.net/maven" }
-        maven { url = "https://plugins.gradle.org/m2/" }
+        maven { url = 'https://maven.minecraftforge.net' }
+        mavenCentral()
     }
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '4.1.+', changing: true
     }
 }
-apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'eclipse'
+apply plugin: 'maven-publish'
 
-version = "1.12.2-1.2.5.10"
-group = "c4.conarm"
-archivesBaseName = "conarm"
+version = '1.16-0.0.1'
+group = 'com.lousiesmods.tinkersarmor'
+archivesBaseName = 'TinkersArmor'
 
-repositories {
-    maven {
-        name = "CraftTweaker/ContentTweaker"
-        url = "http://maven.blamejared.com"
-    }
-    maven {
-        name = "Tinkers/JEI"
-        url = "http://dvs1.progwml6.com/files/maven"
-    }
-    maven {
-        // location of a maven mirror for JEI files, as a fallback
-        name = "ModMaven"
-        url = "modmaven.k-4u.nl"
-    }
-    maven {
-        name = "CurseForge"
-        url = "https://www.cursemaven.com/"
-    }
-}
+java.toolchain.languageVersion = JavaLanguageVersion.of(8)
 
-sourceCompatibility = targetCompatibility = '1.8'
-compileJava {
-    sourceCompatibility = targetCompatibility = '1.8'
-}
-
+println('Java: ' + System.getProperty('java.version') + ' JVM: ' + System.getProperty('java.vm.version') + '(' + System.getProperty('java.vendor') + ') Arch: ' + System.getProperty('os.arch'))
 minecraft {
-    version = "1.12.2-14.23.5.2847"
-    runDir = "run"
-    useDepAts = true
-    mappings = "stable_39"
+    mappings channel: 'official', version: '1.16.5'
 
-    replace '@FINGERPRINT@', project.findProperty('signSHA1')
-}
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
 
-dependencies {
-    deobfCompile "slimeknights.mantle:Mantle:1.12-1.3.3.55"
-    deobfCompile "slimeknights:TConstruct:1.12.2-2.13.0.183"
-    compile "curse.maven:tinkerstoolleveling-250957:2630860"
+            mods {
+                tinkersarmor {
+                    source sourceSets.main
+                }
+            }
+        }
 
-    deobfCompile "CraftTweaker2:CraftTweaker2-API:4.1.20.614"
-    deobfCompile "CraftTweaker2:CraftTweaker2-MC1120-Main:1.12-4.1.20.614"
-    deobfCompile "com.teamacronymcoders:ContentTweaker:1.12.2-4.9.1"
-    deobfCompile "com.teamacronymcoders.base:base:1.12.2-3.11.0"
+        server {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
 
-    deobfCompile "mezz.jei:jei_1.12.2:4.13.1.225:api"
-    runtime "mezz.jei:jei_1.12.2:4.13.1.225"
-}
+            mods {
+                tinkersarmor {
+                    source sourceSets.main
+                }
+            }
+        }
 
-sourceSets {
-    main {
-        resources {
-            srcDirs += 'docs'
+        data {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            args '--mod', 'tinkersarmor', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+
+            mods {
+                tinkersarmor {
+                    source sourceSets.main
+                }
+            }
         }
     }
 }
 
-processResources {
-    inputs.property "version", project.version
-    inputs.property "mcversion", project.minecraft.version
+sourceSets.main.resources { srcDir 'src/generated/resources' }
 
-    from(sourceSets.main.resources.srcDirs) {
-        include 'mcmod.info'
-        expand 'version':project.version, 'mcversion':project.minecraft.version
+repositories {
+    maven {
+        name = 'Mantle'
+        url = 'https://dvs1.progwml6.com/files/maven'
     }
 
-    from(sourceSets.main.resources.srcDirs) {
-        exclude 'mcmod.info'
+    maven {
+        name = "CurseForge"
+        url = "https://minecraft.curseforge.com/api/maven/"
     }
 }
 
-task signJar(type: SignJar, dependsOn: reobfJar) {
+dependencies {
+    
+    minecraft 'net.minecraftforge:forge:1.16.5-36.1.32'
 
-    onlyIf {
-        project.hasProperty('keyStore')
-    }
-
-    keyStore = project.findProperty('keyStore')
-    alias = project.findProperty('keyStoreAlias')
-    storePass = project.findProperty('keyStorePass')
-    keyPass = project.findProperty('keyStoreKeyPass')
-    inputFile = jar.archivePath
-    outputFile = jar.archivePath
+    compile fg.deobf("slimeknights.mantle:Mantle:1.16.5-1.6.115")
+    compile fg.deobf("slimeknights.tconstruct:TConstruct:1.16.5-3.1.0.231")
 }
 
-build.dependsOn signJar
+jar {
+    manifest {
+        attributes([
+                "Specification-Title": "TinkersArmor",
+                "Specification-Vendor": "OneLousyDev",
+                "Specification-Version": "1",
+                "Implementation-Title": project.name,
+                "Implementation-Version": "${version}",
+                "Implementation-Vendor" :"OneLousyDev",
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+jar.finalizedBy('reobfJar')
+
+//publish.dependsOn('reobfJar')
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file:///${project.projectDir}/mcmodsrepo"
+        }
+    }
+}
